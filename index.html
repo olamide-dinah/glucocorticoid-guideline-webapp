@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>GC Complication Tool</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #f4f6f9;
+      --surface:   #ffffff;
+      --border:    #e2e8f0;
+      --text:      #1a202c;
+      --text-2:    #4a5568;
+      --text-3:    #718096;
+      --accent:    #2b6cb0;
+      --accent-bg: #ebf4ff;
+      --urgent:    #c53030;
+      --urgent-bg: #fff5f5;
+      --monitor:   #b7791f;
+      --monitor-bg:#fffff0;
+      --routine:   #276749;
+      --routine-bg:#f0fff4;
+      --radius:    10px;
+      --shadow:    0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout shell ─────────────────────────────────────────── */
+    .screen { display: none; min-height: 100vh; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    /* ── App header ───────────────────────────────────────────── */
+    .app-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px 14px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .app-header h1 { font-size: 17px; font-weight: 600; color: var(--text); }
+    .app-header p  { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+    .back-row { display: flex; align-items: center; gap: 4px; }
+    .back-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 15px; color: var(--accent);
+      display: flex; align-items: center; gap: 3px;
+      padding: 0; font-family: inherit;
+    }
+    .back-btn svg { width: 18px; height: 18px; }
+
+    /* ── Scroll body ──────────────────────────────────────────── */
+    .scroll-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 16px 120px;
+    }
+
+    /* ── Section labels ───────────────────────────────────────── */
+    .sec-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin: 20px 0 8px 4px;
+    }
+    .sec-label:first-child { margin-top: 4px; }
+
+    /* ── Field cards ──────────────────────────────────────────── */
+    .field-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+      min-height: 48px;
+    }
+    .field-row:last-child { border-bottom: none; }
+    .field-row label {
+      font-size: 14px;
+      color: var(--text);
+      flex-shrink: 0;
+      max-width: 55%;
+    }
+    .field-row select {
+      font-size: 14px;
+      color: var(--accent);
+      border: none;
+      background: transparent;
+      text-align: right;
+      flex: 1;
+      min-width: 0;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .field-row select:focus { outline: none; }
+
+    /* ── Checkbox cards ───────────────────────────────────────── */
+    .check-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    .check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      min-height: 48px;
+    }
+    .check-row:last-child { border-bottom: none; }
+    .check-row input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .check-row span { font-size: 14px; color: var(--text); line-height: 1.4; }
+
+    /* ── Sticky footer ────────────────────────────────────────── */
+    .sticky-footer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      z-index: 10;
+    }
+    .gen-btn {
+      width: 100%;
+      height: 50px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: 0.01em;
+      transition: opacity 0.15s;
+    }
+    .gen-btn:active { opacity: 0.85; }
+
+    /* ── Results screen ───────────────────────────────────────── */
+    .results-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px 6px;
+      background: var(--bg);
+    }
+    .count-badge {
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--accent-bg);
+      color: var(--accent);
+      border-radius: 99px;
+      padding: 3px 10px;
+    }
+    .legend {
+      display: flex;
+      gap: 12px;
+      padding: 0 16px 10px;
+    }
+    .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-3); font-weight: 500; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-u { background: var(--urgent); }
+    .dot-m { background: var(--monitor); }
+    .dot-r { background: var(--routine); }
+
+    /* ── Task groups ──────────────────────────────────────────── */
+    .task-group-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 14px 16px 6px;
+    }
+    .task-group { margin-bottom: 4px; }
+    .task-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin: 0 16px;
+    }
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .task-item:last-child { border-bottom: none; }
+    .task-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .task-text { font-size: 14px; color: var(--text); line-height: 1.5; }
+
+    /* type-specific left border accent */
+    .task-item.urgent  { border-left: 3px solid var(--urgent);  background: var(--urgent-bg);  }
+    .task-item.monitor { border-left: 3px solid var(--monitor); background: var(--monitor-bg); }
+    .task-item.routine { border-left: 3px solid var(--routine); background: var(--routine-bg); }
+    .task-item.urgent .task-dot  { background: var(--urgent); }
+    .task-item.monitor .task-dot { background: var(--monitor); }
+    .task-item.routine .task-dot { background: var(--routine); }
+
+    /* ── Disclaimer ───────────────────────────────────────────── */
+    .disclaimer {
+      font-size: 11px;
+      color: var(--text-3);
+      line-height: 1.6;
+      padding: 16px 16px 32px;
+    }
+
+    /* ── Empty state ──────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--text-3);
+      font-size: 14px;
+    }
+
+    /* ── Desktop: constrain to phone-like width ───────────────── */
+    @media (min-width: 520px) {
+      body { display: flex; justify-content: center; background: #d1d9e6; }
+      .screen { max-width: 430px; width: 100%; background: var(--bg); box-shadow: 0 4px 32px rgba(0,0,0,0.18); }
+      .sticky-footer { max-width: 430px; left: 50%; transform: translateX(-50%); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 1: FORM
+══════════════════════════════════════════════ -->
+<div id="formScreen" class="screen active">
+  <div class="app-header">
+    <h1>GC Complication Tool</h1>
+    <p>AANEM 2025 consensus guidance · Bacher et al.</p>
+  </div>
+
+  <div class="scroll-body">
+
+    <div class="sec-label">GC therapy</div>
+    <div class="field-card">
+      <div class="field-row">
+        <label for="dose">Daily dose</label>
+        <select id="dose">
+          <option value="">Choose…</option>
+          <option value="low">Less than 10 mg/day</option>
+          <option value="mid">10–19 mg/day</option>
+          <option value="high">≥ 20 mg/day</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label for="dur">Expected duration</label>
+        <select id="dur">
+          <option value="">Choose…</option>
+          <option value="short">Less than 2 weeks</option>
+          <option value="w2">2–4 weeks</option>
+          <option value="w4">4 weeks – 3 months</option>
+          <option value="chronic">More than 3 months</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label for="combo">Other IS agents</label>
+        <select id="combo">
+          <option value="mono">GC monotherapy only</option>
+          <option value="combo">GC + steroid-sparing agent</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec-label">Patient</div>
+    <div class="field-card">
+      <div class="field-row">
+        <label for="age">Age group</label>
+        <select id="age">
+          <option value="">Choose…</option>
+          <option value="u19">Under 19</option>
+          <option value="a19">19–64</option>
+          <option value="a65">65 or older</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label for="birthyr">Birth year</label>
+        <select id="birthyr">
+          <option value="other">Outside 1945–1965</option>
+          <option value="hepc">Born 1945–1965</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec-label">Risk factors — check all that apply</div>
+    <div class="check-card">
+      <label class="check-row">
+        <input type="checkbox" id="nsaid">
+        <span>Chronic or frequent NSAID use (PUD risk)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="tb">
+        <span>From high TB-burden region, or works/lives in shelter or correctional facility</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="endem">
+        <span>From Strongyloides-endemic region, or has unexplained eosinophilia</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="pjprisk">
+        <span>Lymphopenia, interstitial lung disease, malignancy, or low CD4 (elevated PJP risk)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="dm">
+        <span>Pre-existing diabetes or poor glycemic control</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="htn">
+        <span>Pre-existing hypertension</span>
+      </label>
+    </div>
+
+    <div class="sec-label">Not yet received / screened</div>
+    <div class="check-card">
+      <label class="check-row">
+        <input type="checkbox" id="shingles">
+        <span>Herpes Zoster vaccine (Shingrix)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="flu">
+        <span>Influenza vaccine (this season)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="pneumo">
+        <span>Pneumococcal vaccine</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="hepb">
+        <span>Hepatitis B screen</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="hiv">
+        <span>HIV status</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="bone">
+        <span>Bone / fracture risk assessment</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="eye">
+        <span>Ophthalmology visit (past year)</span>
+      </label>
+    </div>
+
+  </div><!-- /scroll-body -->
+
+  <div class="sticky-footer">
+    <button class="gen-btn" onclick="generate()">Generate task list →</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 2: RESULTS
+══════════════════════════════════════════════ -->
+<div id="resultsScreen" class="screen">
+  <div class="app-header">
+    <div class="back-row">
+      <button class="back-btn" onclick="goBack()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Back
+      </button>
+    </div>
+    <h1 style="margin-top:4px;">Recommended tasks</h1>
+    <p>Review and apply clinical judgement</p>
+  </div>
+
+  <div class="scroll-body" style="padding:0 0 40px;">
+
+    <div class="results-meta">
+      <span class="count-badge" id="taskCount"></span>
+    </div>
+    <div class="legend">
+      <div class="leg"><div class="dot dot-u"></div>Urgent</div>
+      <div class="leg"><div class="dot dot-m"></div>Consider</div>
+      <div class="leg"><div class="dot dot-r"></div>Routine</div>
+    </div>
+
+    <div id="taskOutput"></div>
+
+    <p class="disclaimer">
+      Based on: Bacher C et al., "International Consensus Guidance for the Management of Glucocorticoid Related Complications in Neuromuscular Disease." <em>Muscle &amp; Nerve</em> 2025;71:309–316. This tool is a clinical decision aid only. Always apply professional judgement, consider local protocols, and involve the relevant multidisciplinary team.
+    </p>
+
+  </div>
+</div>
+
+
+<script>
+  /* ─── Logic layer ──────────────────────────────────────────── */
+  function generate() {
+    // Read inputs
+    const dose    = document.getElementById('dose').value;
+    const dur     = document.getElementById('dur').value;
+    const combo   = document.getElementById('combo').value;
+    const age     = document.getElementById('age').value;
+    const birthyr = document.getElementById('birthyr').value;
+
+    const nsaid   = document.getElementById('nsaid').checked;
+    const tb      = document.getElementById('tb').checked;
+    const endem   = document.getElementById('endem').checked;
+    const pjprisk = document.getElementById('pjprisk').checked;
+    const dm      = document.getElementById('dm').checked;
+    const htn     = document.getElementById('htn').checked;
+
+    const shingles = document.getElementById('shingles').checked;
+    const flu      = document.getElementById('flu').checked;
+    const pneumo   = document.getElementById('pneumo').checked;
+    const hepb     = document.getElementById('hepb').checked;
+    const hiv      = document.getElementById('hiv').checked;
+    const bone     = document.getElementById('bone').checked;
+    const eye      = document.getElementById('eye').checked;
+
+    // Derived thresholds
+    const isHigh    = dose === 'high';
+    const isChronic = dur === 'chronic';
+    const ge2w      = dur === 'w2' || dur === 'w4' || dur === 'chronic';
+    const ge4w      = dur === 'w4' || dur === 'chronic';
+    const isCombo   = combo === 'combo';
+    const adultAge  = age === 'a19' || age === 'a65';
+
+    // groups: { CategoryName: [ {type, text}, ... ] }
+    const groups = {};
+    function add(cat, type, text) {
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push({ type, text });
+    }
+
+    /* ── General ── */
+    add('General', 'urgent',
+      'Taper GC slowly — never stop abruptly. Abrupt cessation risks adrenal insufficiency.');
+    add('General', 'routine',
+      'Counsel patient on common and serious GC side effects at initiation.');
+    add('General', 'routine',
+      'Establish multidisciplinary team: primary care clinician and relevant specialists for ongoing monitoring.');
+
+    /* ── Metabolic / glycaemic ── */
+    if (dm || dose) {
+      add('Metabolic', 'monitor',
+        'Check glycaemic control (fasting glucose or HbA1c) before GC initiation and at regular intervals. Coordinate with primary care or endocrinology.');
+    }
+
+    /* ── Cardiovascular / BP ── */
+    if (htn || dose) {
+      add('Cardiovascular', 'monitor',
+        'Monitor blood pressure regularly throughout therapy. Coordinate management with primary care.');
+    }
+
+    /* ── GI prophylaxis ── */
+    if (nsaid) {
+      add('GI prophylaxis', 'urgent',
+        'Prescribe PUD prophylaxis (e.g., proton pump inhibitor) — patient has concurrent NSAID use, a recognised risk factor for peptic ulcer disease on GC.');
+    }
+
+    /* ── Bone health ── */
+    if (isChronic) {
+      if (bone) {
+        add('Bone health', 'urgent',
+          'Screen for GC-induced osteoporosis at baseline. Obtain fracture risk assessment (e.g., FRAX) in coordination with primary care, endocrinology, or rheumatology.');
+      }
+      add('Bone health', 'routine',
+        'Recommend Vitamin D 600–800 IU/day and calcium 1000–1200 mg/day (dietary or supplemental), unless contraindicated.');
+      add('Bone health', 'routine',
+        'Lifestyle advice: balanced diet, smoking cessation, limit alcohol intake, regular weight-bearing exercise.');
+      add('Bone health', 'routine',
+        'If pharmacologic osteoporosis treatment is needed, involve primary care, endocrinology, or rheumatology for choice of agent.');
+    }
+
+    /* ── Ophthalmology ── */
+    if (eye && ge4w) {
+      add('Ophthalmology', 'monitor',
+        'Refer for ophthalmological examination if on GC for ≥6 months (or sooner if cataracts or glaucoma are suspected). Repeat annually.');
+    }
+
+    /* ── Vaccination ── */
+    if (ge2w) {
+      add('Vaccination', 'routine',
+        'Coordinate vaccination plan with primary care or infectious disease. Follow local immunisation guidelines for immunocompromised patients.');
+    }
+    if (isHigh && ge2w) {
+      add('Vaccination', 'urgent',
+        'Avoid live attenuated vaccines while on GC ≥20 mg/day for >2 weeks. Defer until ≥1 month after GC discontinued or reduced below 20 mg/day.');
+      if (shingles) {
+        add('Vaccination', 'urgent',
+          'Give recombinant Herpes Zoster vaccine (Shingrix) — use recombinant (not live) formulation. Ideally administer before starting GC if possible.');
+      }
+    } else if (!isHigh && shingles) {
+      add('Vaccination', 'routine',
+        'Herpes Zoster (Shingrix) vaccination recommended before or during GC therapy if not yet received.');
+    }
+    if (flu && ge2w) {
+      add('Vaccination', 'routine',
+        'Administer annual inactivated influenza vaccine (not live-attenuated), unless contraindicated.');
+    }
+    if (pneumo && ge2w && adultAge) {
+      add('Vaccination', 'routine',
+        'Administer pneumococcal vaccine — recommended for adults aged 19–65 on GC for >2 weeks.');
+    }
+
+    /* ── PJP prophylaxis ── */
+    if (isHigh && ge4w) {
+      if (pjprisk) {
+        add('PJP prophylaxis', 'urgent',
+          'Offer PJP prophylaxis — patient has elevated risk factors (lymphopenia, ILD, malignancy, or low CD4) and is on high-dose GC for ≥1 month.');
+      } else if (isCombo) {
+        add('PJP prophylaxis', 'urgent',
+          'Offer PJP prophylaxis — patient is on GC plus a second immunosuppressive agent for ≥1 month. Shared decision-making is important given limited NMD-specific data.');
+      } else {
+        add('PJP prophylaxis', 'monitor',
+          'Consider PJP prophylaxis — patient on GC monotherapy ≥20 mg/day for ≥1 month. Individualise based on disease and additional risk factors. Shared decision-making is important.');
+      }
+      add('PJP prophylaxis', 'routine',
+        'If initiating PJP prophylaxis: TMP-SMX one single-strength tablet daily, or one double-strength tablet three times per week (adjust for renal function). Alternatives for TMP-SMX allergy: atovaquone 1.5 g/day, dapsone 100 mg/day, or aerosolized pentamidine 300 mg/month.');
+    }
+
+    /* ── Infection screening ── */
+    if (endem) {
+      add('Infection screening', 'urgent',
+        'Screen for Strongyloides stercoralis with serum IgG antibody before GC initiation — patient is from an endemic region or has unexplained eosinophilia.');
+    }
+    if (tb && ge2w) {
+      add('Infection screening', 'urgent',
+        'Screen for latent TB (IGRA or TST) before GC initiation — patient is at high risk for reactivation. Refer to infectious disease if positive; treat before starting GC.');
+    }
+    if (hepb && ge4w) {
+      add('Infection screening', 'urgent',
+        'Screen for Hepatitis B (HBsAg, anti-HBs, anti-HBc) before GC ≥10 mg/day for ≥4 weeks. If positive, refer for subspecialty consultation before starting GC and co-manage throughout.');
+    }
+    if (birthyr === 'hepc' && ge4w) {
+      add('Infection screening', 'routine',
+        'Offer Hepatitis C screening — patient born 1945–1965 (CDC universal recommendation). Shared decision-making applies. Refer if positive.');
+    }
+    if (hiv && isHigh && ge4w) {
+      add('Infection screening', 'monitor',
+        'Offer HIV screening — patient on high-dose GC for ≥4 weeks and HIV status is unknown. Refer to infectious disease if positive. Shared decision-making applies.');
+    }
+
+    /* ── Render ── */
+    const total = Object.values(groups).flat().length;
+    document.getElementById('taskCount').textContent =
+      total + (total === 1 ? ' task' : ' tasks');
+
+    let html = '';
+    for (const [cat, items] of Object.entries(groups)) {
+      html += `<div class="task-group">
+        <div class="task-group-label">${cat}</div>
+        <div class="task-card">`;
+      for (const item of items) {
+        html += `<div class="task-item ${item.type}">
+          <div class="task-dot"></div>
+          <span class="task-text">${item.text}</span>
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+
+    if (!html) {
+      html = `<div class="empty">
+        Complete the form and tap Generate to see recommended tasks.
+      </div>`;
+    }
+
+    document.getElementById('taskOutput').innerHTML = html;
+
+    // Switch screens
+    document.getElementById('formScreen').classList.remove('active');
+    document.getElementById('resultsScreen').classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function goBack() {
+    document.getElementById('resultsScreen').classList.remove('active');
+    document.getElementById('formScreen').classList.add('active');
+    window.scrollTo(0, 0);
+  }
+</script>
+
+</body>
+</html>
