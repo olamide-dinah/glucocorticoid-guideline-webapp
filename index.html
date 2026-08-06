@@ -277,7 +277,7 @@
     <div class="sec-label">GC therapy</div>
     <div class="field-card">
       <div class="field-row">
-        <label for="dose">Daily dose</label>
+        <label for="dose">Daily dose (prednisone/equiv)</label>
         <select id="dose">
           <option value="">Choose…</option>
           <option value="low">Less than 10 mg/day</option>
@@ -339,8 +339,24 @@
         <span>From Strongyloides-endemic region, or has unexplained eosinophilia</span>
       </label>
       <label class="check-row">
-        <input type="checkbox" id="pjprisk">
-        <span>Lymphopenia, interstitial lung disease, malignancy, or low CD4 (elevated PJP risk)</span>
+        <input type="checkbox" id="pjpIld">
+        <span>Interstitial lung disease (especially pulmonary fibrosis)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="pjpLymph">
+        <span>Prolonged lymphopenia (absolute lymphocyte count &lt;700 cells/mm&sup3; for &gt;2 months)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="pjpCd4">
+        <span>Low CD4 count (&lt;250&ndash;300 cells/mm&sup3; for &gt;2 months)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="pjpMalig">
+        <span>Active hematological or solid organ malignancy</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="pjpOrgan">
+        <span>Severe organ dysfunction (e.g., end-stage renal disease, cirrhosis, decompensated heart failure)</span>
       </label>
       <label class="check-row">
         <input type="checkbox" id="dm">
@@ -443,9 +459,15 @@
     const nsaid   = document.getElementById('nsaid').checked;
     const tb      = document.getElementById('tb').checked;
     const endem   = document.getElementById('endem').checked;
-    const pjprisk = document.getElementById('pjprisk').checked;
     const dm      = document.getElementById('dm').checked;
     const htn     = document.getElementById('htn').checked;
+
+    const pjpIld    = document.getElementById('pjpIld').checked;
+    const pjpLymph  = document.getElementById('pjpLymph').checked;
+    const pjpCd4    = document.getElementById('pjpCd4').checked;
+    const pjpMalig  = document.getElementById('pjpMalig').checked;
+    const pjpOrgan  = document.getElementById('pjpOrgan').checked;
+    const pjprisk   = pjpIld || pjpLymph || pjpCd4 || pjpMalig || pjpOrgan;
 
     const shingles = document.getElementById('shingles').checked;
     const flu      = document.getElementById('flu').checked;
@@ -544,17 +566,23 @@
     /* ── PJP prophylaxis ── */
     if (isHigh && ge4w) {
       if (pjprisk) {
+        const factors = [];
+        if (pjpIld)   factors.push('interstitial lung disease');
+        if (pjpLymph) factors.push('prolonged lymphopenia');
+        if (pjpCd4)   factors.push('low CD4 count');
+        if (pjpMalig) factors.push('active malignancy');
+        if (pjpOrgan) factors.push('severe organ dysfunction');
         add('PJP prophylaxis', 'urgent',
-          'Offer PJP prophylaxis — patient has elevated risk factors (lymphopenia, ILD, malignancy, or low CD4) and is on high-dose GC for ≥1 month.');
+          `Offer PJP prophylaxis — patient has elevated risk factor(s) (${factors.join(', ')}) and is on GC ≥20 mg/day for ≥1 month. These comorbidities elevate risk and warrant prophylaxis per AANEM 2025 Statement 2b (see also Claytor &amp; Li 2022).`);
       } else if (isCombo) {
         add('PJP prophylaxis', 'urgent',
-          'Offer PJP prophylaxis — patient is on GC plus a second immunosuppressive agent for ≥1 month. Shared decision-making is important given limited NMD-specific data.');
+          'Offer PJP prophylaxis — patient is on GC ≥20 mg/day plus a second immunosuppressive agent for ≥1 month (AANEM 2025 Statement 2b). Shared decision-making is important given limited NMD-specific data.');
       } else {
         add('PJP prophylaxis', 'monitor',
-          'Consider PJP prophylaxis — patient on GC monotherapy ≥20 mg/day for ≥1 month. Individualise based on disease and additional risk factors. Shared decision-making is important.');
+          'Consider PJP prophylaxis — patient on GC monotherapy ≥20 mg/day for ≥1 month, no additional risk factors identified (AANEM 2025 Statement 2a). Individualise based on disease. Shared decision-making is important.');
       }
       add('PJP prophylaxis', 'routine',
-        'If initiating PJP prophylaxis: TMP-SMX one single-strength tablet daily, or one double-strength tablet three times per week (adjust for renal function). Alternatives for TMP-SMX allergy: atovaquone 1.5 g/day, dapsone 100 mg/day, or aerosolized pentamidine 300 mg/month.');
+        'If initiating PJP prophylaxis: TMP-SMX one single-strength tablet daily, or one double-strength tablet three times per week (adjust for renal function) (AANEM 2025 Statement 3). Alternatives for TMP-SMX allergy: atovaquone 1.5 g/day, dapsone 100 mg/day, or aerosolized pentamidine 300 mg/month (Statement 4).');
     }
 
     /* ── Infection screening ── */
