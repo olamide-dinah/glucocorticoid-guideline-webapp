@@ -116,6 +116,83 @@
       font-family: inherit;
     }
     .field-row select:focus { outline: none; }
+    .field-row input[type="text"] {
+      font-size: 14px;
+      color: var(--accent);
+      border: none;
+      background: transparent;
+      text-align: right;
+      flex: 1;
+      min-width: 0;
+      font-family: inherit;
+    }
+    .field-row input[type="text"]:focus { outline: none; }
+    .field-row input[type="text"]::placeholder { color: var(--text-3); }
+
+    /* ── Dose slider ──────────────────────────────────────────── */
+    .slider-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 14px 16px 16px;
+      margin-bottom: 4px;
+    }
+    .slider-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .slider-head label { font-size: 14px; color: var(--text); }
+    .slider-value { font-size: 14px; font-weight: 700; }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      outline: none;
+      cursor: pointer;
+      margin: 6px 0 10px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: currentColor;
+      border: 3px solid var(--surface);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: currentColor;
+      border: 3px solid var(--surface);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    .slider-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-3);
+      font-weight: 500;
+    }
+    .slider-ticks span:nth-child(2) { text-align: center; }
+    .slider-ticks span:last-child { text-align: right; }
+
+    /* ── Flash highlight (draw attention on reveal) ──────────────── */
+    @keyframes flashHighlight {
+      0%   { background: var(--accent-bg); }
+      100% { background: transparent; }
+    }
+    .flash-highlight { animation: flashHighlight 1.6s ease-out; }
 
     /* ── Checkbox cards ───────────────────────────────────────── */
     .check-card {
@@ -236,6 +313,28 @@
     .task-item.urgent .task-dot  { background: var(--urgent); }
     .task-item.monitor .task-dot { background: var(--monitor); }
     .task-item.routine .task-dot { background: var(--routine); }
+    .task-text a { color: inherit; text-decoration: underline; }
+
+    /* ── Export row ───────────────────────────────────────────── */
+    .export-row {
+      display: flex;
+      gap: 8px;
+      padding: 4px 16px 6px;
+    }
+    .export-btn {
+      flex: 1;
+      height: 42px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .export-btn:active { opacity: 0.7; }
 
     /* ── Disclaimer ───────────────────────────────────────────── */
     .disclaimer {
@@ -259,6 +358,14 @@
       .screen { max-width: 430px; width: 100%; background: var(--bg); box-shadow: 0 4px 32px rgba(0,0,0,0.18); }
       .sticky-footer { max-width: 430px; left: 50%; transform: translateX(-50%); }
     }
+
+    /* ── Print (Save as PDF) ──────────────────────────────────── */
+    @media print {
+      body { background: #fff; display: block; }
+      .app-header .back-row, .export-row, .sticky-footer { display: none !important; }
+      .screen { max-width: 100%; box-shadow: none; }
+      .task-card, .slider-card, .field-card, .check-card { box-shadow: none; }
+    }
   </style>
 </head>
 <body>
@@ -275,16 +382,19 @@
   <div class="scroll-body">
 
     <div class="sec-label">GC therapy</div>
-    <div class="field-card">
-      <div class="field-row">
+    <div class="slider-card">
+      <div class="slider-head">
         <label for="dose">Daily dose (prednisone/equiv)</label>
-        <select id="dose">
-          <option value="">Choose…</option>
-          <option value="low">Less than 10 mg/day</option>
-          <option value="mid">10–19 mg/day</option>
-          <option value="high">≥ 20 mg/day</option>
-        </select>
+        <span class="slider-value" id="doseValueLabel">Less than 10 mg/day</span>
       </div>
+      <input type="range" id="dose" min="0" max="2" step="1" value="0" oninput="updateDoseSlider()">
+      <div class="slider-ticks">
+        <span>&lt;10 mg/day</span>
+        <span>10–19 mg/day</span>
+        <span>≥20 mg/day</span>
+      </div>
+    </div>
+    <div class="field-card">
       <div class="field-row">
         <label for="dur">Expected duration</label>
         <select id="dur">
@@ -297,9 +407,22 @@
       </div>
       <div class="field-row">
         <label for="combo">Other IS agents</label>
-        <select id="combo">
+        <select id="combo" onchange="toggleComboAgent()">
           <option value="mono">GC monotherapy only</option>
           <option value="combo">GC + steroid-sparing agent</option>
+        </select>
+      </div>
+      <div class="field-row" id="comboAgentRow" style="display:none;">
+        <label for="comboAgent">Steroid-sparing agent</label>
+        <select id="comboAgent" onfocus="revealPjpRiskFactors()" onchange="revealPjpRiskFactors()">
+          <option value="">Choose…</option>
+          <option value="aza">Azathioprine</option>
+          <option value="mmf">Mycophenolate</option>
+          <option value="mtx">Methotrexate</option>
+          <option value="tac">Tacrolimus</option>
+          <option value="csa">Cyclosporine</option>
+          <option value="cyc">Cyclophosphamide</option>
+          <option value="rtx">Rituximab</option>
         </select>
       </div>
     </div>
@@ -324,7 +447,216 @@
       </div>
     </div>
 
-    <div class="sec-label">Risk factors — check all that apply</div>
+    <div class="sec-label">Patient characteristics</div>
+    <div class="field-card">
+      <div class="field-row">
+        <label for="birthCountry">Birth country</label>
+        <input type="text" id="birthCountry" list="countryList" placeholder="Type to search…" autocomplete="off">
+      </div>
+      <div class="field-row">
+        <label for="currentCountry">Current country</label>
+        <input type="text" id="currentCountry" list="countryList" placeholder="Type to search…" autocomplete="off">
+      </div>
+    </div>
+    <datalist id="countryList">
+      <option value="Afghanistan"></option>
+      <option value="Albania"></option>
+      <option value="Algeria"></option>
+      <option value="Andorra"></option>
+      <option value="Angola"></option>
+      <option value="Antigua and Barbuda"></option>
+      <option value="Argentina"></option>
+      <option value="Armenia"></option>
+      <option value="Australia"></option>
+      <option value="Austria"></option>
+      <option value="Azerbaijan"></option>
+      <option value="Bahamas"></option>
+      <option value="Bahrain"></option>
+      <option value="Bangladesh"></option>
+      <option value="Barbados"></option>
+      <option value="Belarus"></option>
+      <option value="Belgium"></option>
+      <option value="Belize"></option>
+      <option value="Benin"></option>
+      <option value="Bhutan"></option>
+      <option value="Bolivia"></option>
+      <option value="Bosnia and Herzegovina"></option>
+      <option value="Botswana"></option>
+      <option value="Brazil"></option>
+      <option value="Brunei"></option>
+      <option value="Bulgaria"></option>
+      <option value="Burkina Faso"></option>
+      <option value="Burundi"></option>
+      <option value="Cabo Verde"></option>
+      <option value="Cambodia"></option>
+      <option value="Cameroon"></option>
+      <option value="Canada"></option>
+      <option value="Central African Republic"></option>
+      <option value="Chad"></option>
+      <option value="Chile"></option>
+      <option value="China"></option>
+      <option value="Colombia"></option>
+      <option value="Comoros"></option>
+      <option value="Congo (Republic of the)"></option>
+      <option value="Costa Rica"></option>
+      <option value="Croatia"></option>
+      <option value="Cuba"></option>
+      <option value="Cyprus"></option>
+      <option value="Czechia"></option>
+      <option value="Democratic Republic of the Congo"></option>
+      <option value="Denmark"></option>
+      <option value="Djibouti"></option>
+      <option value="Dominica"></option>
+      <option value="Dominican Republic"></option>
+      <option value="Ecuador"></option>
+      <option value="Egypt"></option>
+      <option value="El Salvador"></option>
+      <option value="Equatorial Guinea"></option>
+      <option value="Eritrea"></option>
+      <option value="Estonia"></option>
+      <option value="Eswatini"></option>
+      <option value="Ethiopia"></option>
+      <option value="Fiji"></option>
+      <option value="Finland"></option>
+      <option value="France"></option>
+      <option value="Gabon"></option>
+      <option value="Gambia"></option>
+      <option value="Georgia"></option>
+      <option value="Germany"></option>
+      <option value="Ghana"></option>
+      <option value="Greece"></option>
+      <option value="Grenada"></option>
+      <option value="Guatemala"></option>
+      <option value="Guinea"></option>
+      <option value="Guinea-Bissau"></option>
+      <option value="Guyana"></option>
+      <option value="Haiti"></option>
+      <option value="Honduras"></option>
+      <option value="Hungary"></option>
+      <option value="Iceland"></option>
+      <option value="India"></option>
+      <option value="Indonesia"></option>
+      <option value="Iran"></option>
+      <option value="Iraq"></option>
+      <option value="Ireland"></option>
+      <option value="Israel"></option>
+      <option value="Italy"></option>
+      <option value="Ivory Coast"></option>
+      <option value="Jamaica"></option>
+      <option value="Japan"></option>
+      <option value="Jordan"></option>
+      <option value="Kazakhstan"></option>
+      <option value="Kenya"></option>
+      <option value="Kiribati"></option>
+      <option value="Kosovo"></option>
+      <option value="Kuwait"></option>
+      <option value="Kyrgyzstan"></option>
+      <option value="Laos"></option>
+      <option value="Latvia"></option>
+      <option value="Lebanon"></option>
+      <option value="Lesotho"></option>
+      <option value="Liberia"></option>
+      <option value="Libya"></option>
+      <option value="Liechtenstein"></option>
+      <option value="Lithuania"></option>
+      <option value="Luxembourg"></option>
+      <option value="Madagascar"></option>
+      <option value="Malawi"></option>
+      <option value="Malaysia"></option>
+      <option value="Maldives"></option>
+      <option value="Mali"></option>
+      <option value="Malta"></option>
+      <option value="Marshall Islands"></option>
+      <option value="Mauritania"></option>
+      <option value="Mauritius"></option>
+      <option value="Mexico"></option>
+      <option value="Micronesia"></option>
+      <option value="Moldova"></option>
+      <option value="Monaco"></option>
+      <option value="Mongolia"></option>
+      <option value="Montenegro"></option>
+      <option value="Morocco"></option>
+      <option value="Mozambique"></option>
+      <option value="Myanmar"></option>
+      <option value="Namibia"></option>
+      <option value="Nauru"></option>
+      <option value="Nepal"></option>
+      <option value="Netherlands"></option>
+      <option value="New Zealand"></option>
+      <option value="Nicaragua"></option>
+      <option value="Niger"></option>
+      <option value="Nigeria"></option>
+      <option value="North Korea"></option>
+      <option value="North Macedonia"></option>
+      <option value="Norway"></option>
+      <option value="Oman"></option>
+      <option value="Pakistan"></option>
+      <option value="Palau"></option>
+      <option value="Palestine"></option>
+      <option value="Panama"></option>
+      <option value="Papua New Guinea"></option>
+      <option value="Paraguay"></option>
+      <option value="Peru"></option>
+      <option value="Philippines"></option>
+      <option value="Poland"></option>
+      <option value="Portugal"></option>
+      <option value="Qatar"></option>
+      <option value="Romania"></option>
+      <option value="Russia"></option>
+      <option value="Rwanda"></option>
+      <option value="Saint Kitts and Nevis"></option>
+      <option value="Saint Lucia"></option>
+      <option value="Saint Vincent and the Grenadines"></option>
+      <option value="Samoa"></option>
+      <option value="San Marino"></option>
+      <option value="Sao Tome and Principe"></option>
+      <option value="Saudi Arabia"></option>
+      <option value="Senegal"></option>
+      <option value="Serbia"></option>
+      <option value="Seychelles"></option>
+      <option value="Sierra Leone"></option>
+      <option value="Singapore"></option>
+      <option value="Slovakia"></option>
+      <option value="Slovenia"></option>
+      <option value="Solomon Islands"></option>
+      <option value="Somalia"></option>
+      <option value="South Africa"></option>
+      <option value="South Korea"></option>
+      <option value="South Sudan"></option>
+      <option value="Spain"></option>
+      <option value="Sri Lanka"></option>
+      <option value="Sudan"></option>
+      <option value="Suriname"></option>
+      <option value="Sweden"></option>
+      <option value="Switzerland"></option>
+      <option value="Syria"></option>
+      <option value="Taiwan"></option>
+      <option value="Tajikistan"></option>
+      <option value="Tanzania"></option>
+      <option value="Thailand"></option>
+      <option value="Timor-Leste"></option>
+      <option value="Togo"></option>
+      <option value="Tonga"></option>
+      <option value="Trinidad and Tobago"></option>
+      <option value="Tunisia"></option>
+      <option value="Turkey"></option>
+      <option value="Turkmenistan"></option>
+      <option value="Tuvalu"></option>
+      <option value="Uganda"></option>
+      <option value="Ukraine"></option>
+      <option value="United Arab Emirates"></option>
+      <option value="United Kingdom"></option>
+      <option value="United States"></option>
+      <option value="Uruguay"></option>
+      <option value="Uzbekistan"></option>
+      <option value="Vanuatu"></option>
+      <option value="Vatican City"></option>
+      <option value="Venezuela"></option>
+      <option value="Vietnam"></option>
+      <option value="Yemen"></option>
+      <option value="Zambia"></option>
+      <option value="Zimbabwe"></option>
+    </datalist>
     <div class="check-card">
       <label class="check-row">
         <input type="checkbox" id="nsaid">
@@ -338,26 +670,28 @@
         <input type="checkbox" id="endem">
         <span>From Strongyloides-endemic region, or has unexplained eosinophilia</span>
       </label>
-      <label class="check-row">
-        <input type="checkbox" id="pjpIld">
-        <span>Interstitial lung disease (especially pulmonary fibrosis)</span>
-      </label>
-      <label class="check-row">
-        <input type="checkbox" id="pjpLymph">
-        <span>Prolonged lymphopenia (absolute lymphocyte count &lt;700 cells/mm&sup3; for &gt;2 months)</span>
-      </label>
-      <label class="check-row">
-        <input type="checkbox" id="pjpCd4">
-        <span>Low CD4 count (&lt;250&ndash;300 cells/mm&sup3; for &gt;2 months)</span>
-      </label>
-      <label class="check-row">
-        <input type="checkbox" id="pjpMalig">
-        <span>Active hematological or solid organ malignancy</span>
-      </label>
-      <label class="check-row">
-        <input type="checkbox" id="pjpOrgan">
-        <span>Severe organ dysfunction (e.g., end-stage renal disease, cirrhosis, decompensated heart failure)</span>
-      </label>
+      <div id="pjpRiskGroup">
+        <label class="check-row">
+          <input type="checkbox" id="pjpIld">
+          <span>Interstitial lung disease (especially pulmonary fibrosis)</span>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="pjpLymph">
+          <span>Prolonged lymphopenia (absolute lymphocyte count &lt;700 cells/mm&sup3; for &gt;2 months)</span>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="pjpCd4">
+          <span>Low CD4 count (&lt;250&ndash;300 cells/mm&sup3; for &gt;2 months)</span>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="pjpMalig">
+          <span>Active hematological or solid organ malignancy</span>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="pjpOrgan">
+          <span>Severe organ dysfunction (e.g., end-stage renal disease, cirrhosis, decompensated heart failure)</span>
+        </label>
+      </div>
       <label class="check-row">
         <input type="checkbox" id="dm">
         <span>Pre-existing diabetes or poor glycemic control</span>
@@ -366,37 +700,81 @@
         <input type="checkbox" id="htn">
         <span>Pre-existing hypertension</span>
       </label>
+      <label class="check-row">
+        <input type="checkbox" id="glucoseChecked">
+        <span>Blood glucose checked recently (within the last few months)</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="bpChecked">
+        <span>Blood pressure checked recently</span>
+      </label>
     </div>
 
-    <div class="sec-label">Not yet received / screened</div>
+    <div class="sec-label">Vaccination</div>
     <div class="check-card">
       <label class="check-row">
         <input type="checkbox" id="shingles">
-        <span>Herpes Zoster vaccine (Shingrix)</span>
+        <span>Herpes Zoster vaccine (Shingrix) not yet received</span>
       </label>
       <label class="check-row">
         <input type="checkbox" id="flu">
-        <span>Influenza vaccine (this season)</span>
+        <span>Influenza vaccine (this season) not yet received</span>
       </label>
       <label class="check-row">
         <input type="checkbox" id="pneumo">
-        <span>Pneumococcal vaccine</span>
+        <span>Pneumococcal vaccine not yet received</span>
       </label>
       <label class="check-row">
+        <input type="checkbox" id="complementInhib">
+        <span>Currently on or being considered for a complement inhibitor (e.g., eculizumab, ravulizumab)</span>
+      </label>
+    </div>
+
+    <div class="sec-label">Infectious disease screening</div>
+    <div class="check-card">
+      <label class="check-row">
         <input type="checkbox" id="hepb">
-        <span>Hepatitis B screen</span>
+        <span>Hepatitis B screen not yet done</span>
       </label>
       <label class="check-row">
         <input type="checkbox" id="hiv">
-        <span>HIV status</span>
+        <span>HIV status unknown</span>
       </label>
+    </div>
+
+    <div class="sec-label">Bone health</div>
+    <div class="check-card">
       <label class="check-row">
         <input type="checkbox" id="bone">
-        <span>Bone / fracture risk assessment</span>
+        <span>Bone / fracture risk assessment not yet done</span>
       </label>
+    </div>
+    <div class="field-card">
+      <div class="field-row">
+        <label for="fraxResult">Fracture risk (FRAX) result</label>
+        <select id="fraxResult">
+          <option value="">Not assessed</option>
+          <option value="low">Low risk</option>
+          <option value="medium">Medium risk</option>
+          <option value="high">High risk</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label for="dexaResult">Bone mineral density (DEXA)</label>
+        <select id="dexaResult">
+          <option value="">Not done</option>
+          <option value="normal">Normal</option>
+          <option value="osteopenia">Osteopenia</option>
+          <option value="osteoporosis">Osteoporosis</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec-label">Other</div>
+    <div class="check-card">
       <label class="check-row">
         <input type="checkbox" id="eye">
-        <span>Ophthalmology visit (past year)</span>
+        <span>Ophthalmology visit not done in past year</span>
       </label>
     </div>
 
@@ -438,8 +816,13 @@
 
     <div id="taskOutput"></div>
 
+    <div class="export-row">
+      <button class="export-btn" onclick="printResults()">Print / Save PDF</button>
+      <button class="export-btn" id="copyBtn" onclick="copyResults()">Copy as text</button>
+    </div>
+
     <p class="disclaimer">
-      Based on: Bacher C et al., "International Consensus Guidance for the Management of Glucocorticoid Related Complications in Neuromuscular Disease." <em>Muscle &amp; Nerve</em> 2025;71:309–316. This tool is a clinical decision aid only. Always apply professional judgement, consider local protocols, and involve the relevant multidisciplinary team.
+      Based on: Bacher C et al., "International Consensus Guidance for the Management of Glucocorticoid Related Complications in Neuromuscular Disease." <em>Muscle &amp; Nerve</em> 2025;71:309–316. This tool is a clinical decision aid only. Always apply professional judgement, consider local protocols, and involve the relevant multidisciplinary team. Guidance on infectious risk (e.g., TB, Strongyloides, PJP, hepatitis, HIV, meningococcus) varies by region and patient population — always check local and regional public health guidelines in addition to this tool.
     </p>
 
   </div>
@@ -447,12 +830,64 @@
 
 
 <script>
+  /* ─── Dose slider ──────────────────────────────────────────── */
+  const DOSE_LEVELS = ['low', 'mid', 'high'];
+  const DOSE_LABELS = ['Less than 10 mg/day', '10–19 mg/day', '≥ 20 mg/day'];
+  const DOSE_COLORS = ['#276749', '#b7791f', '#c53030'];
+
+  function updateDoseSlider() {
+    const slider = document.getElementById('dose');
+    const val = parseInt(slider.value, 10);
+    const label = document.getElementById('doseValueLabel');
+    label.textContent = DOSE_LABELS[val];
+    label.style.color = DOSE_COLORS[val];
+    slider.style.color = DOSE_COLORS[val];
+    slider.style.accentColor = DOSE_COLORS[val];
+  }
+  updateDoseSlider();
+
+  function toggleComboAgent() {
+    const isCombo = document.getElementById('combo').value === 'combo';
+    document.getElementById('comboAgentRow').style.display = isCombo ? 'flex' : 'none';
+    if (isCombo) revealPjpRiskFactors();
+  }
+
+  function revealPjpRiskFactors() {
+    const el = document.getElementById('pjpRiskGroup');
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.remove('flash-highlight');
+    void el.offsetWidth; // restart animation
+    el.classList.add('flash-highlight');
+  }
+
+  /* ─── Category ordering (importance) ──────────────────────────
+     1. Infectious (screening + PJP)  2. Vaccination
+     3. Bone / GI / Metabolic         4. General (last)          */
+  const CATEGORY_ORDER = [
+    'Infection screening', 'PJP prophylaxis',
+    'Vaccination',
+    'Bone health', 'GI prophylaxis', 'Metabolic', 'Cardiovascular', 'Other',
+    'General'
+  ];
+  function sortedCategories(groups) {
+    return Object.keys(groups).sort((a, b) => {
+      const ia = CATEGORY_ORDER.indexOf(a);
+      const ib = CATEGORY_ORDER.indexOf(b);
+      return (ia === -1 ? CATEGORY_ORDER.length : ia) - (ib === -1 ? CATEGORY_ORDER.length : ib);
+    });
+  }
+
+  let lastGroups = {};
+  let lastOrder = [];
+
   /* ─── Logic layer ──────────────────────────────────────────── */
   function generate() {
     // Read inputs
-    const dose    = document.getElementById('dose').value;
+    const dose    = DOSE_LEVELS[parseInt(document.getElementById('dose').value, 10)];
     const dur     = document.getElementById('dur').value;
     const combo   = document.getElementById('combo').value;
+    const comboAgent = document.getElementById('comboAgent').value;
     const age     = document.getElementById('age').value;
     const birthyr = document.getElementById('birthyr').value;
 
@@ -469,12 +904,18 @@
     const pjpOrgan  = document.getElementById('pjpOrgan').checked;
     const pjprisk   = pjpIld || pjpLymph || pjpCd4 || pjpMalig || pjpOrgan;
 
+    const glucoseChecked = document.getElementById('glucoseChecked').checked;
+    const bpChecked      = document.getElementById('bpChecked').checked;
+
     const shingles = document.getElementById('shingles').checked;
     const flu      = document.getElementById('flu').checked;
     const pneumo   = document.getElementById('pneumo').checked;
+    const complementInhib = document.getElementById('complementInhib').checked;
     const hepb     = document.getElementById('hepb').checked;
     const hiv      = document.getElementById('hiv').checked;
     const bone     = document.getElementById('bone').checked;
+    const fraxResult = document.getElementById('fraxResult').value;
+    const dexaResult = document.getElementById('dexaResult').value;
     const eye      = document.getElementById('eye').checked;
 
     // Derived thresholds
@@ -501,15 +942,21 @@
       'Establish multidisciplinary team: primary care clinician and relevant specialists for ongoing monitoring.');
 
     /* ── Metabolic / glycaemic ── */
-    if (dm || dose) {
+    if (dm) {
       add('Metabolic', 'monitor',
-        'Check glycaemic control (fasting glucose or HbA1c) before GC initiation and at regular intervals. Coordinate with primary care or endocrinology.');
+        'Check glycaemic control (fasting glucose or HbA1c) — patient has pre-existing diabetes or poor glycemic control. Coordinate with primary care or endocrinology.');
+    } else if (!glucoseChecked) {
+      add('Metabolic', 'monitor',
+        'Consider checking blood glucose (fasting glucose or HbA1c) — not recently assessed while on GC therapy.');
     }
 
     /* ── Cardiovascular / BP ── */
-    if (htn || dose) {
+    if (htn) {
       add('Cardiovascular', 'monitor',
-        'Monitor blood pressure regularly throughout therapy. Coordinate management with primary care.');
+        'Monitor blood pressure regularly — patient has pre-existing hypertension. Coordinate management with primary care.');
+    } else if (!bpChecked) {
+      add('Cardiovascular', 'monitor',
+        'Consider checking blood pressure — not recently assessed while on GC therapy.');
     }
 
     /* ── GI prophylaxis ── */
@@ -531,10 +978,18 @@
       add('Bone health', 'routine',
         'If pharmacologic osteoporosis treatment is needed, involve primary care, endocrinology, or rheumatology for choice of agent.');
     }
+    if (fraxResult === 'medium' || fraxResult === 'high') {
+      add('Bone health', 'urgent',
+        `FRAX fracture risk assessment indicates ${fraxResult === 'high' ? 'high' : 'medium'} risk. Recommend discussion with primary care, endocrinology, or rheumatology regarding pharmacologic osteoporosis treatment. <a href="https://frax.shef.ac.uk/FRAX/tool.aspx" target="_blank" rel="noopener">Open FRAX calculator</a>.`);
+    }
+    if (dexaResult === 'osteopenia' || dexaResult === 'osteoporosis') {
+      add('Bone health', 'urgent',
+        `Bone mineral density (DEXA) shows ${dexaResult} — recommend discussion with primary care, endocrinology, or rheumatology regarding further evaluation and pharmacologic treatment.`);
+    }
 
-    /* ── Ophthalmology ── */
+    /* ── Other ── */
     if (eye && ge4w) {
-      add('Ophthalmology', 'monitor',
+      add('Other', 'monitor',
         'Refer for ophthalmological examination if on GC for ≥6 months (or sooner if cataracts or glaucoma are suspected). Repeat annually.');
     }
 
@@ -562,6 +1017,10 @@
       add('Vaccination', 'routine',
         'Administer pneumococcal vaccine — recommended for adults aged 19–65 on GC for >2 weeks.');
     }
+    if (complementInhib) {
+      add('Vaccination', 'monitor',
+        'Consider meningococcal vaccine — patient is on or being considered for a complement inhibitor (e.g., eculizumab, ravulizumab), which increases susceptibility to Neisseria meningitidis infection.');
+    }
 
     /* ── PJP prophylaxis ── */
     if (isHigh && ge4w) {
@@ -575,8 +1034,11 @@
         add('PJP prophylaxis', 'urgent',
           `Offer PJP prophylaxis — patient has elevated risk factor(s) (${factors.join(', ')}) and is on GC ≥20 mg/day for ≥1 month. These comorbidities elevate risk and warrant prophylaxis per AANEM 2025 Statement 2b (see also Claytor &amp; Li 2022).`);
       } else if (isCombo) {
+        const agentNames = { aza: 'azathioprine', mmf: 'mycophenolate', mtx: 'methotrexate',
+          tac: 'tacrolimus', csa: 'cyclosporine', cyc: 'cyclophosphamide', rtx: 'rituximab' };
+        const agentText = agentNames[comboAgent] ? ` (${agentNames[comboAgent]})` : '';
         add('PJP prophylaxis', 'urgent',
-          'Offer PJP prophylaxis — patient is on GC ≥20 mg/day plus a second immunosuppressive agent for ≥1 month (AANEM 2025 Statement 2b). Shared decision-making is important given limited NMD-specific data.');
+          `Offer PJP prophylaxis — patient is on GC ≥20 mg/day plus a second immunosuppressive agent${agentText} for ≥1 month (AANEM 2025 Statement 2b). Shared decision-making is important given limited NMD-specific data.`);
       } else {
         add('PJP prophylaxis', 'monitor',
           'Consider PJP prophylaxis — patient on GC monotherapy ≥20 mg/day for ≥1 month, no additional risk factors identified (AANEM 2025 Statement 2a). Individualise based on disease. Shared decision-making is important.');
@@ -612,8 +1074,13 @@
     document.getElementById('taskCount').textContent =
       total + (total === 1 ? ' task' : ' tasks');
 
+    const order = sortedCategories(groups);
+    lastGroups = groups;
+    lastOrder = order;
+
     let html = '';
-    for (const [cat, items] of Object.entries(groups)) {
+    for (const cat of order) {
+      const items = groups[cat];
       html += `<div class="task-group">
         <div class="task-group-label">${cat}</div>
         <div class="task-card">`;
@@ -644,6 +1111,59 @@
     document.getElementById('resultsScreen').classList.remove('active');
     document.getElementById('formScreen').classList.add('active');
     window.scrollTo(0, 0);
+  }
+
+  /* ─── Export ───────────────────────────────────────────────── */
+  function printResults() {
+    window.print();
+  }
+
+  function copyResults() {
+    if (!lastOrder.length) return;
+    const TYPE_TAG = { urgent: '[URGENT]', monitor: '[CONSIDER]', routine: '[ROUTINE]' };
+    let text = 'GC COMPLICATION TOOL — Recommended Tasks\n' + '='.repeat(42) + '\n\n';
+    for (const cat of lastOrder) {
+      text += cat.toUpperCase() + '\n';
+      for (const item of lastGroups[cat]) {
+        const plain = item.text.replace(/<[^>]+>/g, '');
+        text += `- ${TYPE_TAG[item.type]} ${plain}\n`;
+      }
+      text += '\n';
+    }
+    text += 'Based on: Bacher C et al., "International Consensus Guidance for the Management of Glucocorticoid Related Complications in Neuromuscular Disease." Muscle & Nerve 2025;71:309–316. Clinical decision aid only — apply professional judgement and check local/regional guidelines.\n';
+
+    const btn = document.getElementById('copyBtn');
+    const original = btn.textContent;
+    const showCopied = () => {
+      btn.textContent = 'Copied ✓';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    };
+    const showFailed = () => {
+      alert('Could not copy automatically. Select and copy the text below manually:\n\n' + text);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(showCopied).catch(() => fallbackCopy(text, showCopied, showFailed));
+    } else {
+      fallbackCopy(text, showCopied, showFailed);
+    }
+  }
+
+  function fallbackCopy(text, onSuccess, onFail) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      ok ? onSuccess() : onFail();
+    } catch (e) {
+      onFail();
+    }
   }
 </script>
 
