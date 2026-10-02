@@ -696,12 +696,12 @@
       </datalist>
       <div class="check-card">
         <label class="check-row">
-          <input type="checkbox" id="tb">
-          <span>From high TB-burden region, or works/lives in shelter or correctional facility</span>
+          <input type="checkbox" id="tbShelter">
+          <span>Works/lives in shelter or correctional facility</span>
         </label>
         <label class="check-row">
-          <input type="checkbox" id="endem">
-          <span>From Strongyloides-endemic region, or has unexplained eosinophilia</span>
+          <input type="checkbox" id="eosinophilia">
+          <span>Has unexplained eosinophilia</span>
         </label>
         <div id="pjpRiskGroup" hidden>
           <label class="check-row">
@@ -992,6 +992,40 @@
     });
   }
 
+  /* High TB-burden countries (WHO names plus the spellings used in the country list) */
+  const HIGH_TB_COUNTRIES = new Set([
+    'angola', 'bangladesh', 'brazil', 'central african republic', 'china',
+    'congo', 'congo (republic of the)',
+    "democratic people's republic of korea", 'north korea',
+    'democratic republic of the congo', 'ethiopia', 'gabon', 'india', 'indonesia',
+    'kenya', 'lesotho', 'liberia', 'mongolia', 'mozambique', 'myanmar', 'namibia',
+    'nigeria', 'pakistan', 'papua new guinea', 'philippines', 'sierra leone',
+    'south africa', 'thailand', 'uganda',
+    'united republic of tanzania', 'tanzania',
+    'viet nam', 'vietnam', 'zambia'
+  ]);
+  function isHighTbCountry(name) {
+    return HIGH_TB_COUNTRIES.has((name || '').trim().toLowerCase());
+  }
+
+  /* Strongyloides-endemic countries (SE/S Asia, sub-Saharan Africa, Latin America & Caribbean, Pacific) */
+  const STRONGYLOIDES_COUNTRIES = new Set([
+    'cambodia', 'laos', 'viet nam', 'vietnam', 'thailand', 'myanmar', 'philippines',
+    'indonesia', 'malaysia', 'bangladesh', 'india', 'nepal', 'sri lanka', 'bhutan',
+    'nigeria', 'ghana', 'sierra leone', 'liberia', "cote d'ivoire", 'ivory coast',
+    'cameroon', 'democratic republic of the congo', 'dr congo', 'congo',
+    'congo (republic of the)', 'gabon', 'ethiopia', 'kenya', 'uganda', 'tanzania',
+    'united republic of tanzania', 'somalia', 'sudan', 'south sudan',
+    'brazil', 'peru', 'bolivia', 'ecuador', 'colombia', 'venezuela',
+    'guatemala', 'honduras', 'nicaragua', 'el salvador', 'costa rica', 'panama', 'mexico',
+    'haiti', 'dominican republic', 'jamaica', 'cuba', 'puerto rico',
+    'papua new guinea', 'solomon islands', 'fiji'
+  ]);
+  function isStrongyloidesCountry(name) {
+    const n = (name || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’‘]/g, "'");
+    return STRONGYLOIDES_COUNTRIES.has(n);
+  }
+
   /* Stars give a colour-independent priority cue alongside the dot/border colour */
   const STAR_MAP = { urgent: '★★★', monitor: '★★☆', routine: '★☆☆' };
 
@@ -1016,8 +1050,14 @@
 
     const nsaid   = document.getElementById('nsaid').checked;
     const giUlcer = document.getElementById('giUlcer').checked;
-    const tb      = document.getElementById('tb').checked;
-    const endem   = document.getElementById('endem').checked;
+    const birthCountry   = document.getElementById('birthCountry').value;
+    const currentCountry = document.getElementById('currentCountry').value;
+    const tbShelter = document.getElementById('tbShelter').checked;
+    const tbCountry = isHighTbCountry(birthCountry) || isHighTbCountry(currentCountry);
+    const tb      = tbCountry || tbShelter;
+    const eosinophilia = document.getElementById('eosinophilia').checked;
+    const strongCountry = isStrongyloidesCountry(birthCountry) || isStrongyloidesCountry(currentCountry);
+    const endem   = strongCountry || eosinophilia;
     const dm      = document.getElementById('dm').checked;
     const htn     = document.getElementById('htn').checked;
 
@@ -1182,11 +1222,14 @@
     /* ── Infection screening ── */
     if (endem && !endemDone) {
       add('Infection screening', 'urgent',
-        'Screen for Strongyloides stercoralis — serum IgG antibody before GC initiation; patient is from an endemic region or has unexplained eosinophilia.');
+        `Screen for Strongyloides stercoralis — serum IgG antibody before GC initiation; ${[strongCountry && 'patient was born in or lives in a Strongyloides-endemic country', eosinophilia && 'patient has unexplained eosinophilia'].filter(Boolean).join('; ')}.`);
     }
     if (tb && ge2w && !tbDone) {
+      const tbReasons = [];
+      if (tbCountry) tbReasons.push('born in or living in a high TB-burden country');
+      if (tbShelter) tbReasons.push('works/lives in a shelter or correctional facility');
       add('Infection screening', 'urgent',
-        'Screen for latent TB — IGRA or TST before GC initiation; patient is at high risk for reactivation. Refer to infectious disease if positive; treat before starting GC.');
+        `Screen for latent TB — IGRA or TST before GC initiation; patient is at high risk for reactivation (${tbReasons.join('; ')}). Refer to infectious disease if positive; treat before starting GC.`);
     }
     if (!hepbDone && ge4w) {
       add('Infection screening', 'urgent',
