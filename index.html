@@ -1002,7 +1002,11 @@
     'nigeria', 'pakistan', 'papua new guinea', 'philippines', 'sierra leone',
     'south africa', 'thailand', 'uganda',
     'united republic of tanzania', 'tanzania',
-    'viet nam', 'vietnam', 'zambia'
+    'viet nam', 'vietnam', 'zambia',
+    'botswana', 'cameroon', 'eswatini', 'swaziland', 'guinea', 'guinea-bissau',
+    'malawi', 'russian federation', 'russia', 'zimbabwe', 'azerbaijan', 'belarus',
+    'kazakhstan', 'nepal', 'peru', 'republic of moldova', 'moldova', 'somalia',
+    'tajikistan', 'ukraine', 'uzbekistan'
   ]);
   function isHighTbCountry(name) {
     return HIGH_TB_COUNTRIES.has((name || '').trim().toLowerCase());
@@ -1019,7 +1023,9 @@
     'brazil', 'peru', 'bolivia', 'ecuador', 'colombia', 'venezuela',
     'guatemala', 'honduras', 'nicaragua', 'el salvador', 'costa rica', 'panama', 'mexico',
     'haiti', 'dominican republic', 'jamaica', 'cuba', 'puerto rico',
-    'papua new guinea', 'solomon islands', 'fiji'
+    'papua new guinea', 'solomon islands', 'fiji',
+    'mozambique', 'rwanda', 'egypt', 'angola', 'south korea', 'korea, south',
+    'republic of korea', 'china'
   ]);
   function isStrongyloidesCountry(name) {
     const n = (name || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’‘]/g, "'");
