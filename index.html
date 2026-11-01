@@ -1250,6 +1250,15 @@
       add('Infection screening', 'monitor',
         'Offer HIV screening — patient on high-dose GC for ≥4 weeks and HIV status is unknown. Refer to infectious disease if positive. Shared decision-making applies.');
     }
+    if (patientAge === null) {
+      const needsAge = [];
+      if (!hepcDone && ge4w) needsAge.push('Hepatitis C screening (born 1945–1965)');
+      if (!pneumo && ge2w) needsAge.push('pneumococcal vaccine (ages 19–65)');
+      if (needsAge.length) {
+        add('Infection screening', 'monitor',
+          `Age-dependent tasks not assessed — ${needsAge.join(' and ')} ${needsAge.length > 1 ? 'depend' : 'depends'} on patient age, which was not entered; check manually.`);
+      }
+    }
 
     /* ── Render ── */
     const total = Object.values(groups).flat().length;
