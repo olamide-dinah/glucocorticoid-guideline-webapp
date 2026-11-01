@@ -1093,6 +1093,7 @@
 
     // Derived thresholds
     const isHigh    = dose === 'high';
+    const ge10mg    = dose === 'mid' || dose === 'high';
     const isChronic = dur === 'chronic';
     const ge2w      = dur === 'w2' || dur === 'w4' || dur === 'chronic';
     const ge4w      = dur === 'w4' || dur === 'chronic';
@@ -1230,14 +1231,14 @@
       add('Infection screening', 'urgent',
         `Screen for Strongyloides stercoralis — serum IgG antibody before GC initiation; ${[strongCountry && 'patient was born in or lives in a Strongyloides-endemic country', eosinophilia && 'patient has unexplained eosinophilia'].filter(Boolean).join('; ')}.`);
     }
-    if (tb && ge2w && !tbDone) {
+    if (tb && ge2w && ge10mg && !tbDone) {
       const tbReasons = [];
       if (tbCountry) tbReasons.push('born in or living in a high TB-burden country');
       if (tbShelter) tbReasons.push('works/lives in a shelter or correctional facility');
       add('Infection screening', 'urgent',
         `Screen for latent TB — IGRA or TST before GC initiation; patient is at high risk for reactivation (${tbReasons.join('; ')}). Refer to infectious disease if positive; treat before starting GC.`);
     }
-    if (!hepbDone && ge4w) {
+    if (!hepbDone && ge4w && ge10mg) {
       add('Infection screening', 'urgent',
         'Screen for Hepatitis B — HBsAg, anti-HBs, anti-HBc, before GC ≥10 mg/day for ≥4 weeks. If positive, refer for subspecialty consultation before starting GC and co-manage throughout.');
     }
